@@ -1,0 +1,22 @@
+services:
+  indexing-pipeline:
+    container_name: indexing-pipeline
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    # networks:
+    #   - rag-net
+    ports:
+      - ${CONTAINER_PORT}:${SERVICE_PORT}
+    restart: unless-stopped
+    volumes:
+      - ./main.py:/app/main.py
+    command: ["sh", "-c", "python3 main.py"]
+
+
+# networks:
+#   rag-net:
+#     name: ${NETWORK_NAME}
+#     external: true

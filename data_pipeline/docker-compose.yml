@@ -1,0 +1,19 @@
+services:
+  data-pipeline:
+    container_name: data-pipeline-service
+    networks:
+      - rag-net
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - ${CONTAINER_PORT}:${SERVICE_PORT}
+    restart: unless-stopped
+    volumes:
+      - ./main.py:/app/main.py
+    
+
+networks:
+  rag-net:
+    name: ${NETWORK_NAME}
+    external: true

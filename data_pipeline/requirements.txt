@@ -1,0 +1,5 @@
+PyMuPDF==1.24.9
+langchain==0.2.15
+fastapi==0.110.1
+uvicorn==0.29.0
+python-multipart

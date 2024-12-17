@@ -1,0 +1,26 @@
+services:
+  text-generation:
+    container_name: text-generation
+    image: ghcr.io/huggingface/text-generation-inference:2.2.0
+    ports:
+      - ${CONTAINER_PORT}:${SERVICE_PORT}
+    volumes:
+      - .docker/data:/data
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=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
+      - MODEL_ID=vilm/vinallama-7b-chat
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - rag-net
+
+# networks:
+#   rag-net:
+#     name: ${NETWORK_NAME}
+#     external: true

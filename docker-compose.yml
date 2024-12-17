@@ -1,0 +1,97 @@
+services:
+  weaviate:
+    container_name: weaviate
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - '8080'
+      - --scheme
+      - http
+    image: cr.weaviate.io/semitechnologies/weaviate:1.26.4
+    ports:
+      - 8080:8080
+      - 50051:50051
+    volumes:
+      - ./weaviate/.docker/data:/var/lib/weaviate
+    restart: unless-stopped
+    env_file:
+      - ./weaviate/.env
+    # environment:
+    #   GPT4ALL_INFERENCE_API: 'http://t2v-gpt4all:8080'
+    #   SPELLCHECK_INFERENCE_API: 'http://text-spellcheck:8080'
+    #   OPENAI_APIKEY: $OPENAI_APIKEY
+    #   QUERY_DEFAULTS_LIMIT: 25
+    #   AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+    #   PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+    #   DEFAULT_VECTORIZER_MODULE: 'text2vec-gpt4all'
+    #   ENABLE_MODULES: 'text2vec-gpt4all,text-spellcheck,ref2vec-centroid,generative-openai'
+    #   CLUSTER_HOSTNAME: 'node1'
+    #   RAFT_ENABLE_ONE_NODE_RECOVERY: 'true'
+
+  text-spellcheck:
+    container_name: text-spellcheck
+    image: cr.weaviate.io/semitechnologies/text-spellcheck-model:pyspellchecker-en
+    restart: unless-stopped
+
+  t2v-gpt4all:
+    container_name: t2v-gpt4all
+    image: cr.weaviate.io/semitechnologies/gpt4all-inference:all-MiniLM-L6-v2
+    restart: unless-stopped
+
+  weaviate-ui:
+    image: naaive/weaviate-ui:latest
+    ports:
+      - "7777:7777"
+    environment:
+      - WEAVIATE_URL=http://weaviate:8080
+    
+  data-pipeline:
+    container_name: data-pipeline
+    image: data_pipeline
+    env_file:
+      - ./data_pipeline/.env
+    ports:
+      - 6008:6008
+    volumes:
+      - ./data_pipeline/main.py:/app/main.py
+      - ./data_pipeline/output:/app/output
+
+    restart: unless-stopped
+    command: ["sh", "-c", "python3 main.py"]
+
+  rag:
+    container_name: rag-service
+    image: rag-service
+    env_file:
+      - ./rag/.env
+    ports:
+      - 6007:6007
+    volumes:
+      - ./rag/main.py:/app/main.py
+    restart: unless-stopped
+    command: ["sh", "-c", "python3 main.py"]
+
+  indexing-pipeline:
+    container_name: indexing-pipeline
+    image: indexing-pipeline
+    env_file:
+      - ./indexing-pipeline/.env
+    ports:
+      - 6001:6001
+    restart: unless-stopped
+    volumes:
+      - ./indexing-pipeline/main.py:/app/main.py
+    command: ["sh", "-c", "python3 main.py"]
+
+  embeddings:
+    container_name: embeddings
+    image: embeddings
+    env_file:
+      - ./embeddings/.env
+    ports:
+      - 6000:6000
+    restart: unless-stopped
+    volumes:
+      - ./embeddings/main.py:/app/main.py
+    command: ["sh", "-c", "python3 main.py"]

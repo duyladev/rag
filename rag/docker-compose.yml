@@ -1,0 +1,17 @@
+services:
+  rag:
+    container_name: rag-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - ${CONTAINER_PORT}:${SERVICE_PORT}
+    volumes:
+      - ./main.py:/app/main.py
+    restart: unless-stopped
+    command: ["sh", "-c", "python3 main.py"]
+            
+    
+
