@@ -6,7 +6,6 @@ import uvicorn
 import os
 
 APP_PORT= int(os.getenv("SERVICE_PORT", 3000))
-
 app = FastAPI()
 
 model_name = "dangvantuan/vietnamese-embedding"
@@ -20,6 +19,10 @@ def text2vec(text):
     tokens_pt = tokenizer(text, padding=True, truncation=True, max_length=512, add_special_tokens=True, return_tensors="pt")
     outputs = model(**tokens_pt)
     return outputs[0].mean(0).mean(0).detach().cpu().numpy().tolist()
+
+@app.get("/health")
+async def healthCheck():
+    return {"status": "ok"}
 
 @app.post("/vectorize")
 async def vectorize(request: TextRequest):

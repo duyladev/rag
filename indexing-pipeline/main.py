@@ -15,30 +15,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING) 
 
-app = FastAPI(    
-    title="Indexing",
-    docs_url="/idx/docs",  
-    redoc_url="/idx/redoc",
-    openapi_url="/idx/openapi.json")
+app = FastAPI(title="Indexing Pipeline")
 
 client = weaviate.Client(WEAVIATE_URL, startup_period=40)
 
 
-@app.get("/healthz")
-async def health_check():
+@app.get("/health")
+async def healthCheck():
     return {"status": "ok"}
 
-@app.get("/readyz")
-async def readiness_check():
-    try:
-        client.schema.get()  
-        requests.get(VECTORIZE_URL)  
-        return {"status": "ready"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Service not ready")
 
-
-def init_weaviate_schema(client):
+def initVectorDBSchema(client):
     schema = {
         "classes": [{
             "class": "Document",
@@ -49,25 +36,22 @@ def init_weaviate_schema(client):
             }]
         }]
     }
-
     client.schema.delete_all()
-
     client.schema.create(schema)
 
-def vectorize_documents(document):
-    logger.warning("Gửi yêu cầu vectorize đến API")
+def vectorizeDocuments(document):
+
     response = requests.post(VECTORIZE_URL, json={"text": document})  
     if response.status_code == 200:
-        logger.warning("Vectorize thành công")
         vector=np.array(response.json().get("vector"), dtype=object)
         return vector
     else:
-        logger.error(f"Vectorize thất bại với mã lỗi {response.status_code}")
+        logger.error(f"Failed to vectorize document {document}")
         raise HTTPException(status_code=response.status_code, detail="Failed to vectorize document")
 
-def import_documents_with_vectors(documents, vectors, client):
+def saveDocsToDB(documents, vectors, client):
     if len(documents) != len(vectors):
-        raise Exception("Số lượng documents ({}) và vectors ({}) không khớp".format(len(documents), len(vectors)))
+        raise HTTPException(status_code=400, detail="Number of documents and vectors do not match")
         
     for i, document in enumerate(documents):
         try:
@@ -77,43 +61,37 @@ def import_documents_with_vectors(documents, vectors, client):
                 vector=vectors[i]
             )
         except Exception as e:
-            print(f"Error importing document {i}: {e}")
-
-@app.post("/embed_and_import_json")
-async def embed_and_import_json(file: UploadFile = File(...)):
+            logger.error(f"Failed to save document {document} to Weaviate: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to save document to Weaviate")
+        
+@app.post("/embedding-process")
+async def embeddingProcess(file: UploadFile = File(...)):
     try:
-        logger.warning("Đang đọc file JSON")
         json_data = json.load(file.file)
     except json.JSONDecodeError:
-        logger.error("Lỗi: File không phải là JSON hợp lệ")
-        raise HTTPException(status_code=400, detail="Invalid JSON file")
+        raise HTTPException(status_code=400, detail="JSON file is invalid")
 
-    logger.warning("Đang chuyển đổi dữ liệu JSON thành chuỗi text")
+    logger.info("CONVERTING JSON DATA TO TEXT")
     processed_documents = []
     for item in json_data:
         combined_text = f"Trích dẫn ở: {item['title']} \n Nội dung như sau: {item['context']}"
         processed_documents.append(combined_text)
     
-    logger.warning("Đang tokenize các chuỗi text")
     tokenizer_sent = [tokenize(sent) for sent in processed_documents]
 
-    logger.warning("Đang khởi tạo schema cho Weaviate")
-    init_weaviate_schema(client)
+    initVectorDBSchema(client)
 
     vectors = []
-    for idx, tokenized_text in enumerate(tokenizer_sent):
-        logger.warning(f"Đang vectorize document {idx + 1}/{len(tokenizer_sent)}")
-        vector = vectorize_documents(tokenized_text)
+    for _, tokenized_text in enumerate(tokenizer_sent):
+        vector = vectorizeDocuments(tokenized_text)
         vectors.append(vector)
     
     vectors = np.array(vectors, dtype=object)
-    logger.warning("Đang import các documents và vectors vào Weaviate")
-    import_documents_with_vectors(processed_documents, vectors, client)
+    saveDocsToDB(processed_documents, vectors, client)
 
-    logger.warning("Tất cả các documents đã được import thành công vào Weaviate")
-    return {"message": "All documents successfully imported into Weaviate"}
+    return {"message": "Successfully imported documents with vectors"}
 
 if __name__ == "__main__":
-    init_weaviate_schema(client)
+    initVectorDBSchema(client)
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=APP_PORT, reload=True)
