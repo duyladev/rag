@@ -1,0 +1,2 @@
+- Tạo image từ các service bằng câu lệnh build.sh
+- Run các container bằng docker-compose
