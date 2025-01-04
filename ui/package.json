@@ -15,7 +15,8 @@
     "axios": "^1.7.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.0.2"
+    "react-router-dom": "^7.0.2",
+    "ui": "file:"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.3",
