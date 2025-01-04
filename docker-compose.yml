@@ -85,3 +85,11 @@ services:
     volumes:
       - ./embeddings/main.py:/app/main.py
     command: ["sh", "-c", "python3 main.py"]
+
+  ui:
+    container_name: rag-ui
+    image: rag-ui
+    ports:
+      - 3000:80
+    restart: unless-stopped
+

@@ -58,6 +58,7 @@ def queryWithRAG(message):
     client = weaviate.Client(WEAVIATE_URL,trust_env=True)
 
     text_data = {"text": tokenized_query}
+    
     response = requests.post(VECTORIZE_URL, json=text_data)
 
     if response.status_code == 200:
